@@ -13,3 +13,10 @@ venv/
 *.sqlite
 *.sqlite-journal
 *.db
+
+features/sql/
+features/plots/
+features/plots_cs/
+features/plots_test/
+features/genetic/output/
+features/genetic_gp/output/
