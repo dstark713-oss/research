@@ -1,0 +1,430 @@
+# FULL FEATURE LIST: 1-284 (ChatGPT + DeepSeek) + 285-413 (Claude)
+# Conventions: r=close.pct_change(); g=O_t/C_{t-1}-1 (overnight); d=C_t/O_t-1 (intraday); M=C/IMOEX; dM=M.pct_change()
+#   e = residual of r ~ IMOEX; EW = equal-weight index of the 185 stocks; cs_rank = percentile rank across 185 stocks on date t
+#   RS_20(t) = realized 20d excess return over (t-20,t]; y_{i,t-252k} = RS realized over the 20d after t-252k (already known at t)
+#   Every feature uses data up to close of t only. Lines starting with '#' are comments (strip before parsing).
+001 body_range_ratio_5 | mean(|C-O|/(H-L+eps), 5)
+002 body_range_ratio_20 | mean(|C-O|/(H-L+eps), 20)
+003 upper_wick_ratio_5 | mean((H-max(O,C))/(H-L+eps), 5)
+004 lower_wick_ratio_5 | mean((min(O,C)-L)/(H-L+eps), 5)
+005 upper_wick_imbalance_20 | mean(upper_wick) - mean(lower_wick), 20
+006 close_location_std_20 | std(CLV), 20; CLV=(C-L)/(H-L+eps)
+007 close_location_skew_20 | skew(CLV), 20
+008 range_body_ratio_20 | mean(H-L)/(mean(|C-O|)+eps), 20
+009 range_expansion_5_20 | mean(H-L,5)/mean(H-L,20)
+010 close_to_high_frequency_20 | share(CLV > 0.8), 20
+011 positive_return_fraction_20 | share(r > 0), 20
+012 negative_return_fraction_20 | share(r < 0), 20
+013 sign_imbalance_20 | mean(sign(r)), 20
+014 return_sign_entropy_20 | entropy(sign(r)), 20
+015 positive_streak_max_20 | max streak of r>0, 20
+016 negative_streak_max_20 | max streak of r<0, 20
+017 return_reversal_frequency_20 | share(sign(r_t)!=sign(r_{t-1})), 20
+018 directional_consistency_10 | |sum(sign(r))|/10, 10
+019 up_down_day_ratio_20 | count(r>0)/(count(r<0)+eps), 20
+020 alternation_ratio_20 | frequency of sign alternation, 20
+021 upside_semivariance_20 | mean(r^2 | r>0), 20
+022 downside_semivariance_20 | mean(r^2 | r<0), 20
+023 upside_downside_ratio_20 | upside_semivar/(downside_semivar+eps), 20
+024 downside_deviation_20 | sqrt(mean(min(r,0)^2)), 20
+025 positive_tail_mean_20 | mean(top 20% r), 20
+026 negative_tail_mean_20 | mean(bottom 20% r), 20
+027 tail_asymmetry_20 | |Q95(r)|/|Q05(r)|, 20
+028 large_move_frequency_20 | share(|r| > 2*std20), 20
+029 positive_large_move_ratio_20 | pos_extreme_days/(all_extreme_days+eps), 20
+030 negative_large_move_ratio_20 | neg_extreme_days/(all_extreme_days+eps), 20
+031 volatility_acceleration_5_20 | std(r,5)/std(r,20), 20
+032 volatility_acceleration_20_60 | std(r,20)/std(r,60), 60
+033 volatility_of_volatility_20 | std(rolling_std(r,5),20)
+034 range_volatility_ratio_20 | std(H-L,20)/(mean(H-L,20)+eps)
+035 intraday_vol_share_20 | var(d,20)/(var(r,20)+eps)
+036 overnight_vol_share_20 | var(g,20)/(var(r,20)+eps)
+037 gap_intraday_correlation_20 | corr(g,d), 20
+038 volatility_concentration_20 | share of sum(r^2) from top 20% days, 20
+039 volatility_cluster_length_20 | mean length of |r|>std20 episodes, 20
+040 range_volatility_divergence_20 | std(H-L,20)/(std(r,20)+eps)
+041 distance_to_high_20 | C/max(H,20)-1
+042 distance_to_low_20 | C/min(L,20)-1
+043 distance_to_high_60 | C/max(H,60)-1
+044 distance_to_low_60 | C/min(L,60)-1
+045 range_position_60 | (C-min(L,60))/(max(H,60)-min(L,60)+eps)
+046 range_position_change_5 | range_position_60_t - range_position_60_{t-5}
+047 high_touch_frequency_20 | share close in top 10% local range, 20
+048 low_touch_frequency_20 | share close in bottom 10% local range, 20
+049 high_rejection_ratio_20 | share H touches rolling max but C below, 20
+050 low_rejection_ratio_20 | share L touches rolling min but C above, 20
+051 drawdown_duration_20 | current days below rolling max, 20
+052 drawdown_depth_20 | C/rolling_max_20 - 1
+053 drawdown_recovery_ratio_60 | recovered fraction of max DD, 60
+054 drawdown_frequency_60 | count DD > 5%, 60
+055 recovery_speed_60 | mean recovery speed after local min, 60
+056 upside_excursion_20 | mean max favorable excursion, 20
+057 downside_excursion_20 | mean max adverse excursion, 20
+058 excursion_asymmetry_20 | upside_excursion/(downside_excursion+eps), 20
+059 max_recovery_20 | max rise from local min, 20
+060 underwater_fraction_60 | share days below rolling max, 60
+061 path_efficiency_5 | |C_t/C_{t-5}-1|/sum(|r|), 5
+062 path_efficiency_60 | |C_t/C_{t-60}-1|/sum(|r|), 60
+063 efficiency_scale_ratio | path_efficiency_5/(path_efficiency_60+eps)
+064 path_length_20 | sum(|r|), 20
+065 net_gross_movement_20 | |sum(r)|/sum(|r|), 20
+066 range_path_ratio_20 | |C_t-C_{t-20}|/sum(H-L), 20
+067 fractal_dimension_proxy_20 | proxy fractal dimension of price path, 20
+068 path_curvature_20 | mean abs direction change, 20
+069 local_trend_consistency_20 | sign consistency inside 5d blocks, 20
+070 movement_compression_20 | net movement/path length adjusted by range, 20
+071 return_autocorr_2_20 | ACF(r, lag=2), 20
+072 return_autocorr_5_60 | ACF(r, lag=5), 60
+073 return_autocorr_10_60 | ACF(r, lag=10), 60
+074 abs_return_autocorr_1_20 | ACF(|r|, lag=1), 20
+075 abs_return_autocorr_5_60 | ACF(|r|, lag=5), 60
+076 variance_ratio_5_20 | variance ratio q=5, window 20
+077 variance_ratio_10_60 | variance ratio q=10, window 60
+078 mean_reversion_strength_20 | -corr(r_t, sum_{j=1..5} r_{t-j}), 20
+079 return_shock_reversal_20 | corr(r_t, -r_{t-1}), 20
+080 price_deviation_reversion_20 | speed of return to rolling mean, 20
+081 relative_price_position_60 | position of M_t in 60d range
+082 relative_path_efficiency_20 | path efficiency of M_t, 20
+083 relative_volatility_20 | std(ΔM), 20
+084 relative_volatility_ratio_5_20 | std(ΔM,5)/std(ΔM,20)
+085 relative_drawdown_60 | M_t/max(M,60)-1
+086 relative_recovery_speed_60 | recovery speed of M_t, 60
+087 relative_sign_consistency_20 | share consecutive same-sign ΔM, 20
+088 relative_return_autocorr_1_20 | ACF(ΔM, lag=1), 20
+089 relative_range_position_change_5 | change of M_t range position, 5
+090 relative_shock_resilience_60 | rel return on large negative IMOEX days, 60
+091 beta_downside_60 | beta only on negative IMOEX days, 60
+092 beta_upside_60 | beta only on positive IMOEX days, 60
+093 beta_asymmetry_60 | beta_downside - beta_upside, 60
+094 correlation_downside_60 | corr(stock,IMOEX) on negative days, 60
+095 correlation_upside_60 | corr(stock,IMOEX) on positive days, 60
+096 idiosyncratic_volatility_20 | std residuals r~IMOEX, 20
+097 idiosyncratic_volatility_ratio_20_60 | idio_vol_20/idio_vol_60
+098 market_sensitivity_change_20_60 | beta_20 - beta_60
+099 market_capture_upside_60 | mean stock/IMOEX behavior on up days, 60
+100 market_capture_downside_60 | mean stock/IMOEX behavior on down days, 60
+101 gap_mean_20 | mean(g), 20
+102 gap_skew_20 | skew(g), 20
+103 gap_reversal_20 | corr(g,d), 20
+104 gap_followthrough_20 | corr(g,r_t), 20
+105 intraday_return_skew_20 | skew(d), 20
+106 intraday_return_autocorr_1_20 | ACF(d, lag=1), 20
+107 overnight_intraday_divergence_20 | mean(g)-mean(d), 20
+108 gap_absorption_ratio_20 | share of gap compensated intraday, 20
+109 intraday_range_efficiency_20 | mean(|d|/(H-L+eps)), 20
+110 close_open_direction_agreement_20 | share g and d same sign, 20
+111 volume_surprise_20 | log(V/median(V,20))
+112 volume_concentration_20 | share volume on top 20% days, 20
+113 volume_return_correlation_20 | corr(V,r), 20
+114 volume_abs_return_correlation_20 | corr(V,|r|), 20
+115 volume_up_down_imbalance_20 | volume up days/volume down days, 20
+116 volume_price_efficiency_20 | |sum r|/sum(V*|r|+eps), 20
+117 volume_range_correlation_20 | corr(V,H-L), 20
+118 volume_shock_frequency_60 | share V > 2*median(V,60), 60
+119 volume_weighted_close_location_20 | weighted mean(CLV, weights=V), 20
+120 volume_directional_persistence_20 | ACF(sign(r)*V, lag=1), 20
+121 hill_alpha_60 | Hill alpha right tail, 60
+122 hill_alpha_left_60 | Hill alpha left tail, 60
+123 hill_tail_ratio_60 | hill_alpha_left/hill_alpha_right, 60
+124 t_df_estimate_60 | MLE df of Student-t on r, 60
+125 robust_scale_60 | MAD(r)*1.4826, 60
+126 robust_zscore_close_60 | (C-median(C,60))/MAD(C,60)
+127 quantile_skew_60 | (Q90+Q10-2*Q50)/(Q90-Q10), 60
+128 tail_index_ratio_20_60 | (Q95/Q50)_20/(Q95/Q50)_60
+129 extreme_flag_fraction_20 | share is_extreme=1, 20
+130 vol_of_hill_alpha_60 | std(hill_alpha_20, 60)
+131 realized_vol_5 | std(r,5)
+132 realized_vol_22 | std(r,22)
+133 realized_vol_66 | std(r,66)
+134 har_vol_forecast_20 | HAR combo RV5,RV22,RV66
+135 vol_persistence_proxy_20 | ACF(|r|, lag=1), 20
+136 vol_persistence_proxy_60 | ACF(|r|, lag=1), 60
+137 vol_long_memory_120 | sum ACF(|r|, lags 1..20), 120
+138 log_rv_ratio_5_60 | log(RV5/RV60)
+139 vol_regime_zscore_60 | zscore(RV20 vs 252d)
+140 garch_like_leverage_60 | corr(r_t<0, next σ), 60
+141 abs_return_acf_10_120 | ACF(|r|, lag=10), 120
+142 vol_mean_reversion_20_60 | RV20/RV60 - 1
+143 tail_ratio_20 | |Q95(r)|/|Q05(r)|, 20
+144 tail_ratio_60 | |Q95(r)|/|Q05(r)|, 60
+145 tail_ratio_change_20_60 | tail_ratio_20 - tail_ratio_60
+146 bowley_20 | Bowley skew, 20
+147 bowley_60 | Bowley skew, 60
+148 extreme_up_freq_60 | share r > Q99(r,252), 60
+149 extreme_down_freq_60 | share r < Q01(r,252), 60
+150 extreme_asymmetry_60 | extreme_up_freq - extreme_down_freq, 60
+151 max_drawdown_20 | max drawdown close, 20
+152 max_runup_20 | max runup close, 20
+153 max_dd_runup_ratio_20 | max_drawdown/(max_runup+eps), 20
+154 days_since_extreme_60 | days since |r| > 3*std60
+155 rel_tail_ratio_20 | tail_ratio(ΔM), 20
+156 rel_skew_60 | skew(ΔM), 60
+157 rel_kurt_60 | kurt(ΔM), 60
+158 rel_abs_acf_1_60 | ACF(|ΔM|, lag=1), 60
+159 rel_abs_acf_5_120 | ACF(|ΔM|, lag=5), 120
+160 rel_vol_ratio_5_60 | std(ΔM,5)/std(ΔM,60)
+161 rel_beta_to_market_60 | beta(ΔM, ret_IMOEX), 60
+162 rel_residual_vol_20 | std(ΔM - β*ret_IMOEX, 20)
+163 rel_dist_from_high_252 | M_t/max(M,252)-1
+164 rel_price_position_252 | position of M_t in 252d range
+165 rel_range_position_60 | position of M_t in 60d range
+166 rel_momentum_60 | ΔM over 60 days
+167 rel_momentum_120 | ΔM over 120 days
+168 clv_mean_20 | mean(CLV), 20
+169 clv_autocorr_1_20 | ACF(CLV, lag=1), 20
+170 clv_vol_20 | std(CLV), 20
+171 clv_trend_20 | slope(CLV), 20
+172 close_vs_vwap_proxy_20 | C/mean((H+L+C)/3,20)-1
+173 intraday_skew_20 | skew(d), 20
+174 overnight_skew_20 | skew(g), 20
+175 gap_vol_ratio_20 | std(g,20)/std(r,20)
+176 intraday_vol_ratio_20 | std(d,20)/std(r,20)
+177 high_low_range_zscore_60 | (H-L)/ATR60 - 1
+178 atr_14 | ATR(14)/C
+179 atr_ratio_5_20 | ATR(5)/ATR(20)
+180 true_range_skew_20 | skew(H-L), 20
+181 close_to_open_vol_20 | std(O/C-1), 20
+182 open_to_close_vol_20 | std(C/O-1), 20
+183 log_volume_zscore_60 | zscore(log V, 60)
+184 volume_rank_60 | rank of V among last 60 days, 0..1
+185 volume_autocorr_1_20 | ACF(log V, lag=1), 20
+186 volume_trend_20 | slope(log V), 20
+187 volume_skew_20 | skew(log V), 20
+188 volume_kurt_20 | kurt(log V), 20
+189 volume_volatility_corr_60 | corr(V, RV5), 60
+190 volume_shock_reversal_20 | historical relation V shock to next r, 20
+191 obv_slope_20 | slope(OBV), 20
+192 vwap_deviation_20 | (C-VWAP20)/VWAP20
+193 volume_price_divergence_20 | corr(ΔlogV,r) - corr(ΔlogV,-r), 20
+194 signal_to_noise_60 | mean(feature)/std(feature), 60
+195 feature_cusum_stat_252 | CUSUM stat of feature, 252
+196 rolling_ic_mean_60 | rolling historical IC feature->RS, 60
+197 feature_half_life_60 | AR(1) half-life of feature, 60
+198 vol_adjusted_signal_60 | feature/RV20
+199 signal_zscore_252 | zscore(feature,252)
+200 regime_adjusted_signal_stock | feature*(1-P_crisis)
+201 signal_rank_own_60 | rank feature vs own last 60 values
+202 signal_trend_20 | slope(feature), 20
+203 signal_acf_1_60 | ACF(feature, lag=1), 60
+204 signal_vol_60 | std(feature), 60
+205 signal_skew_60 | skew(feature), 60
+206 signal_kurt_60 | kurt(feature), 60
+207 hurst_252_stock | Hurst exponent of stock r, 252
+208 hurst_change_60 | hurst(60)-hurst(252)
+209 hurst_lag6_diff | hurst(t)-hurst(t-6 windows)
+210 variance_ratio_20_120 | VR(20)/VR(120) stock
+211 stock_vol_vs_market_vol_60 | std(r,60)/std(ret_IMOEX,60)
+212 stock_beta_change_20_120 | beta(20)-beta(120)
+213 amihud_20 | mean(|r|/(C*V+eps), 20)
+214 amihud_60 | mean(|r|/(C*V+eps), 60)
+215 amihud_zscore_252 | (amihud_20 - mean(amihud_20,252))/std(amihud_20,252)
+216 roll_spread_20 | 2*sqrt(max(-cov(r_t,r_{t-1},20),0))
+217 roll_spread_60 | 2*sqrt(max(-cov(r_t,r_{t-1},60),0))
+218 zero_volume_days_20 | share(V==0), 20
+219 zero_volume_days_60 | share(V==0), 60
+220 turnover_zscore_252 | zscore(log(C*V+1), 252)
+221 turnover_trend_60 | slope(log(C*V+1), 60)
+222 turnover_volatility_20 | std(log(C*V+1), 20)
+223 max_ret_20 | max(r), 20
+224 max_ret_60 | max(r), 60
+225 min_ret_20 | min(r), 20
+226 min_ret_60 | min(r), 60
+227 max_minus_min_20 | max(r)-min(r), 20
+228 sum_top3_ret_20 | sum(top 3 daily r)/20
+229 sum_bottom3_ret_20 | sum(bottom 3 daily r)/20
+230 max_ret_contribution_20 | max(r^2)/(sum(r^2)+eps), 20
+231 min_ret_contribution_20 | (min(r)^2)/(sum(r^2)+eps), 20
+232 days_since_max_ret_20 | days since max daily r inside last 20 days
+233 ret_5 | C_t/C_{t-5}-1
+234 ret_10 | C_t/C_{t-10}-1
+235 ret_20 | C_t/C_{t-20}-1
+236 dev_ma_20 | C/MA(C,20)-1
+237 dev_ma_60 | C/MA(C,60)-1
+238 dev_ma_120 | C/MA(C,120)-1
+239 ma_slope_20 | MA(C,20)_t/MA(C,20)_{t-5}-1
+240 ma_slope_60 | MA(C,60)_t/MA(C,60)_{t-5}-1
+241 theil_sen_slope_60 | Theil-Sen slope of log(C), 60, normalized by C
+242 trend_accel_20_60 | ma_slope_20 - ma_slope_60
+243 parkinson_vol_20 | sqrt(mean((ln(H/L))^2/(4*ln(2)))), 20
+244 garman_klass_vol_20 | Garman-Klass OHLC vol estimator, 20
+245 rogers_satchell_vol_20 | Rogers-Satchell vol estimator, 20
+246 yang_zhang_vol_20 | Yang-Zhang vol estimator, 20
+247 parkinson_zscore_252 | zscore(parkinson_vol_20, 252)
+248 close_parkinson_ratio_20 | std(r,20)/(parkinson_vol_20+eps)
+249 gap_vol_20 | std(g), 20
+250 intraday_vol_20 | std(d), 20
+251 residual_momentum_20 | mean residuals e from r~IMOEX, 20
+252 residual_momentum_60 | mean residuals e from r~IMOEX, 60
+253 residual_skew_60 | skew residuals e, 60
+254 residual_kurt_60 | kurt residuals e, 60
+255 residual_tail_ratio_60 | |Q95(e)|/|Q05(e)|, 60
+256 residual_max_20 | max residuals e, 20
+257 residual_min_20 | min residuals e, 20
+258 market_r2_60 | 1 - var(e)/var(r), 60
+259 market_r2_change_20_60 | R2_20 - R2_60
+260 downside_beta_change_20_60 | beta_downside_20 - beta_downside_60
+261 upside_beta_change_20_60 | beta_upside_20 - beta_upside_60
+262 lower_tail_dependence_60 | corr(1{r<=Q10(r)}, 1{IMOEX<=Q10(IMOEX)}), 60
+263 upper_tail_dependence_60 | corr(1{r>=Q90(r)}, 1{IMOEX>=Q90(IMOEX)}), 60
+264 correlation_change_20_60 | corr(r,IMOEX,20) - corr(r,IMOEX,60)
+265 rgbi_corr_60 | corr(r, ret_RGBI), 60
+266 rgbi_beta_60 | beta from r~ret_RGBI, 60
+267 stock_minus_rgbi_ret_20 | stock_ret_20 - RGBI_ret_20
+268 stock_minus_rgbi_vol_20 | std(r - ret_RGBI, 20)
+269 days_since_new_high_252 | days since C == rolling_max(C,252)
+270 days_since_new_low_252 | days since C == rolling_min(C,252)
+271 new_high_count_60 | count of 252d closing highs in last 60 days
+272 new_low_count_60 | count of 252d closing lows in last 60 days
+273 dist_high_accel_252_60 | dist_from_high_252 - dist_from_high_60
+274 dist_low_accel_252_60 | dist_from_low_252 - dist_from_low_60
+275 volume_ratio_5_20 | mean(V,5)/mean(V,20)
+276 volume_price_lead_20 | corr(V_{t-1}, r_t), 20
+277 volume_spike_asymmetry_60 | share(high volume & up day) - share(high volume & down day), 60
+278 robust_kurt_60 | (Q90-Q10)/(Q75-Q25+eps), 60
+279 interquartile_range_60 | (Q75-Q25)/(|Q50|+eps), 60
+280 decile_range_60 | (Q90-Q10)/(|Q50|+eps), 60
+281 dist_high_x_calm_prob | dist_from_high_252 * (1 - P_crisis)
+282 price_position_x_trend_prob | price_position_252 * P_trend
+283 rs_top20_flag_20 | 1 if past 20d realized RS rank is in top 20%
+284 rs_top20_streak_60 | share of last 3 completed 20d RS windows in top 20%
+# ======================= ADDITIONS =======================
+# --- A. 52w-high / anchoring family (base features behind research IC leaders; 285-286 are referenced by 273/281/282 but were not defined) ---
+285 dist_from_high_252 | C/max(C,252)-1
+286 price_position_252 | (C-min(C,252))/(max(C,252)-min(C,252)+eps)
+287 dist_from_low_252 | C/min(C,252)-1
+288 dist_from_high_120 | C/max(C,120)-1
+289 dist_from_high_504 | C/max(C,504)-1
+290 dist_from_high_intraday_252 | C/max(H,252)-1
+291 dist_high_sigma_252 | ln(C/max(C,252))/(std(r,60)*sqrt(20)+eps), distance to high in 20d-sigma units
+292 dist_high_zscore_own_504 | zscore(dist_from_high_252 vs its own last 504 values)
+293 dist_high_pctile_own_504 | percentile rank of dist_from_high_252 among own last 504 values
+294 dist_from_expanding_high | C/max(C, all history up to t)-1
+295 dev_ma_252 | C/MA(C,252)-1
+296 robust_zscore_logclose_252 | (ln C - median(ln C,252))/(1.4826*MAD(ln C,252)+eps)
+# --- B. Moments of r (skew_60/kurt_60 are confirmed IC features in research but were absent) and persistence shape ---
+297 skew_20 | skew(r), 20
+298 skew_60 | skew(r), 60
+299 skew_120 | skew(r), 120
+300 kurt_20 | kurt(r), 20
+301 kurt_60 | kurt(r), 60
+302 kurt_120 | kurt(r), 120
+303 skew_change_20_120 | skew_20 - skew_120
+304 variance_ratio_60_500 | VR(q=60) on window 500 (research: stock VR(60)~0.80)
+305 ou_halflife_252 | -ln2/ln(phi), phi=AR(1) coef of ln C - MA(ln C,252), 252
+306 permutation_entropy_30 | permutation entropy of r, order 3, 30
+# --- C. Momentum shape / information discreteness / trend quality ---
+307 information_discreteness_252 | sign(mom_252_skip_20)*(share(r<0)-share(r>0)), 252
+308 information_discreteness_60 | sign(ret_60)*(share(r<0)-share(r>0)), 60
+309 mom_252_skip_20 | ln(C_{t-20}/C_{t-252})
+310 mom_120_skip_20 | ln(C_{t-20}/C_{t-120})
+311 rel_ret_5 | ret_5 - ret_IMOEX_5
+312 rel_ret_20_ew | ret_20 - ret_EW_20
+313 rel_ret_60_ew | ret_60 - ret_EW_60
+314 trend_tstat_60 | t-stat of OLS slope of ln C on time, 60
+315 trend_tstat_120 | t-stat of OLS slope of ln C on time, 120
+316 trend_r2_120 | R2 of OLS ln C on time, 120
+317 quad_curvature_120 | quadratic coef of ln C on normalized time, 120
+318 ts_ret20_pctile_own_504 | percentile rank of ret_20 among own last 504 values
+# --- D. Own RS track record (12 non-overlapping past 20d RS windows; payoff skew, consistency, tracking error) ---
+319 rs_mean_12w | mean of last 12 non-overlapping 20d RS
+320 rs_median_12w | median of last 12 non-overlapping 20d RS
+321 rs_hit_rate_12w | share of last 12 windows with RS>0
+322 rs_vol_12w | std of last 12 window RS (tracking error)
+323 rs_ir_12w | rs_mean_12w/(rs_vol_12w+eps)
+324 rs_skew_12w | skew of last 12 window RS
+325 rs_max_12w | max of last 12 window RS
+326 rs_rank_mean_12w | mean cs_rank of RS over last 12 windows
+327 rs_rank_std_12w | std of cs_rank of RS over last 12 windows
+328 rs_rank_slope_12w | slope of cs_rank of RS over last 12 windows
+# --- E. Ex-dividend cycle (raw prices, forward target is price return), seasonality, calendar. Event = g < -max(2*std(g,252),1.5%) and g > -15% and is_extreme=0. Only past years used. ---
+329 seasonal_rs_1y | y_{i,t-252}
+330 seasonal_rs_mean_1_5y | mean(y_{i,t-252k}, k=1..5 available)
+331 seasonal_rs_rank_mean_1_5y | mean cs_rank of y_{i,t-252k}, k=1..5
+332 seasonal_rs_hit_rate_1_5y | share(y_{i,t-252k}>0), k=1..5
+333 neg_gap_event_next20_seasonality | share of k=1..3 with an event in days (t-252k, t-252k+20]
+334 neg_gap_event_last20_seasonality | share of k=1..3 with an event in days (t-252k-20, t-252k]
+335 neg_gap_size_next20_seasonal | mean |g| of those next-window events, 0 if none
+336 days_to_expected_neg_gap | min over k=1..3 of positive (event_date_k + 252k - t), capped at 60
+337 days_since_neg_gap_event | days since last event, capped at 252
+338 ret_since_neg_gap_event | C_t/C_{event-1}-1, 0 if none in 252
+339 div_yield_proxy_252 | sum(|g| over events, 252)
+340 cs_rank_div_yield_proxy_252 | cs_rank(div_yield_proxy_252)
+341 month_sin [CAL] | sin(2*pi*month/12)
+342 month_cos [CAL] | cos(2*pi*month/12)
+343 tom_phase [CAL] | trading day of month / trading days in month
+344 moex_review_proximity [CAL] | signed days to nearest 3rd Friday of Mar/Jun/Sep/Dec (verify against MOEX calendar)
+# --- F. Size / liquidity levels / microstructure / volume-conditioned returns ---
+345 log_adv_20 | log(mean(C*V,20)+1)
+346 log_adv_252 | log(mean(C*V,252)+1)
+347 adv_market_share_60 | mean(C*V,60)/sum_over_185(mean(C*V,60))
+348 adv_share_change_20_252 | adv_share_20/adv_share_252 - 1
+349 log_price | ln(C)
+350 listing_age_log | ln(1 + trading days since first valid close)
+351 flat_bar_share_60 | share(H==L), 60
+352 min_price_step_rel_60 | min nonzero |C_t-C_{t-1}|/C_t, 60
+353 kyle_lambda_60 | cov(r, sign(r)*sqrt(C*V))/var(sign(r)*sqrt(C*V)), 60
+354 hv_ret_60 | sum(r | V > 1.5*median(V,60)), 60
+355 hv_minus_lv_ret_60 | sum(r | V>1.5*med) - sum(r | V<0.7*med), 60
+# --- G. Market structure / sensitivities / neighbors ---
+356 beta_ew_60 | beta(r, ret_EW), 60
+357 beta_size_spread_60 | beta of (r - ret_IMOEX) on (ret_EW - ret_IMOEX), 60
+358 ew_residual_vol_20 | std(r - beta_ew*ret_EW, 20)
+359 heavyweight_corr_60 | corr(r, mean ret of top-5 turnover stocks excl. self), 60
+360 dimson_beta_lag1_60 | coef on ret_IMOEX_{t-1} in r_t ~ ret_IMOEX_t + ret_IMOEX_{t-1}, 60
+361 dimson_beta_sum_60 | coef(t)+coef(t-1)+coef(t-2) in r_t ~ lags of ret_IMOEX, 60
+362 coskew_imoex_120 | E[e*m^2]/(sqrt(E[e^2])*E[m^2]), m = demeaned ret_IMOEX, 120
+363 cokurt_imoex_120 | E[e*m^3]/(sqrt(E[e^2])*E[m^2]^1.5), 120
+364 pc1_loading_120 | loading on PC1 of 185-stock return correlation matrix, 120
+365 pc2_loading_120 | loading on PC2 of 185-stock return correlation matrix, 120
+366 peer5_rs_20 | mean RS_20 of 5 most correlated stocks (corr on 252)
+367 own_minus_peer5_rs_20 | RS_20 - peer5_rs_20
+368 peer5_ret_5 | mean ret_5 of 5 most correlated stocks (corr on 252)
+369 brent_beta_resid_60 [EXO] | beta of e on ret_BRENT, 60 (only if series available)
+370 usdrub_beta_resid_60 [EXO] | beta of e on ret_USDRUB, 60 (only if series available)
+371 gold_beta_resid_60 [EXO] | beta of e on ret_GOLD, 60 (only if series available)
+# --- H. Jumps / events / overnight vs intraday ---
+372 bipower_jump_share_20 | max(RV - BV,0)/RV, BV=(pi/2)*mean(|r_t||r_{t-1}|), 20
+373 bipower_jump_share_60 | max(RV - BV,0)/RV, 60
+374 days_since_big_event_120 | days since (|g|>3*std(g,60) and V>2*median(V,60)), capped at 120
+375 ret_since_big_event_120 | C_t/C_{event-1}-1, 0 if none in 120
+376 big_event_sign_120 | sign(g) of last big event, 0 if none in 120
+377 big_event_count_252 | count of big events, 252
+378 cum_overnight_ret_60 | sum(g), 60
+379 cum_intraday_ret_60 | sum(d), 60
+380 overnight_minus_intraday_ret_120 | sum(g) - sum(d), 120
+# --- I. Volatility scale / regime / compression ---
+381 ewma_idio_vol_20 | sqrt(EWMA(e^2, lambda=0.94))
+382 har_idio_vol_forecast | HAR combo of idio RV5, RV22, RV66 (on e)
+383 vol_pctile_own_252 | percentile rank of RV22 among own last 252 values
+384 bb_width_pctile_252 | percentile rank of 4*std(C,20)/MA(C,20) among own last 252 values
+385 narrow_range_count_20 | count of days where H-L is the min of last 7 days, 20
+386 idio_sharpe_60 | residual_momentum_60/(idio_vol_60+eps)
+387 vol_vs_cs_median_60 | std(r,60)/median_over_185(std(r,60))
+388 ma_cross_count_60 | number of C crossings of MA(C,20), 60
+# --- J. Cross-sectional normalizations (target is cross-sectional RS) ---
+389 cs_rank_dist_from_high_252 | cs_rank(dist_from_high_252)
+390 cs_rank_price_position_252 | cs_rank(price_position_252)
+391 cs_rank_kurt_60 | cs_rank(kurt_60)
+392 cs_rank_skew_60 | cs_rank(skew_60)
+393 cs_rank_realized_vol_22 | cs_rank(realized_vol_22)
+394 cs_rank_log_adv_60 | cs_rank(log(mean(C*V,60)+1))
+395 cs_rank_idio_vol_60 | cs_rank(std residuals r~IMOEX, 60)
+396 cs_rank_gap_high_vs_kurt | cs_rank(dist_from_high_252) - cs_rank(kurt_60)
+397 cs_zscore_amihud_60 | (amihud_60 - mean_cs)/std_cs
+# --- K. Market-state / pool features [MKT]: identical for all stocks on date t, zero cross-sectional IC alone; use only as regime inputs / interactions ---
+398 breadth_above_ma60 [MKT] | share of 185 stocks with C>MA(C,60)
+399 breadth_near_high_252 [MKT] | share of stocks within 5% of own 252d closing high
+400 cs_dispersion_20 [MKT] | cross-sectional std of ret_20
+401 cs_dispersion_ratio_20_252 [MKT] | cs_dispersion_20 / mean(cs_dispersion_20, 252)
+402 cs_rs_skew_20 [MKT] | cross-sectional skew of RS_20 (payoff asymmetry; research: top10_share 0.613)
+403 cs_rs_top20_median_spread_20 [MKT] | mean RS_20 of top 20% - median RS_20
+404 median_rs_20 [MKT] | cross-sectional median RS_20
+405 avg_pairwise_corr_60 [MKT] | mean pairwise corr of 185 stock returns, 60
+406 pc1_share_120 [MKT] | explained variance share of PC1, 120
+407 ew_minus_imoex_ret_20 [MKT] | ret_EW_20 - ret_IMOEX_20
+408 ew_minus_imoex_ret_60 [MKT] | ret_EW_60 - ret_IMOEX_60
+409 imoex_dist_from_high_252 [MKT] | IMOEX/max(IMOEX,252)-1
+410 imoex_vol_ratio_20_252 [MKT] | std(ret_IMOEX,20)/std(ret_IMOEX,252)
+411 rgbi_trend_60 [MKT] | RGBI/MA(RGBI,60)-1
+412 dist_high_x_breadth | dist_from_high_252 * breadth_above_ma60
+413 kurt_60_x_p_crisis | kurt_60 * P_crisis

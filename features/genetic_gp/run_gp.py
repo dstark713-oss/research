@@ -46,22 +46,22 @@ def main():
     est = SymbolicTransformer(
         population_size=1000,
         generations=30,
-        tournament_size=20,
-        function_set=('add', 'sub', 'mul', 'div', 'sqrt', 'log', 'abs', 'neg', 'inv',
-                      'max', 'min', 'sin', 'cos', 'tan'),
+        tournament_size=7,           # было 20
+        function_set=('add', 'sub', 'mul', 'div', 'sqrt', 'log', 'abs', 'neg',
+                      'max', 'min'),  # убрали inv, cos, sin, tan
         metric=cross_sectional_ic_fitness,
         p_crossover=0.7,
         p_subtree_mutation=0.05,
         p_hoist_mutation=0.05,
         p_point_mutation=0.05,
         p_point_replace=0.1,
-        parsimony_coefficient=0.005,
+        parsimony_coefficient=0.02,   # было 0.005
         max_samples=0.9,
         n_components=50,
         hall_of_fame=100,
         random_state=42,
-        n_jobs=1,
-        verbose=1,
+        n_jobs=-1,
+        verbose=0,
     )
     est.fit(X, y, sample_weight=date_ids)
     print(f"[run] обучение: {time.time()-t0:.1f} сек")
