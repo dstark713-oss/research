@@ -20,3 +20,4 @@ features/plots_cs/
 features/plots_test/
 features/genetic/output/
 features/genetic_gp/output/
+backtests/*.png
