@@ -14,6 +14,8 @@ import pandas as pd
 
 from .config import STOCKS_DB, SPLIT_JSON, ML_EQUITY_CSV, ML_TRADES_CSV
 
+from .config import STOCKS_DB, INDEXES_DB, SPLIT_JSON, ML_EQUITY_CSV, ML_TRADES_CSV
+
 
 def load_split_date() -> str:
     return json.loads(SPLIT_JSON.read_text())["split_date"]
@@ -50,3 +52,14 @@ def load_ml_equity() -> pd.DataFrame:
     if not ML_EQUITY_CSV.exists():
         raise FileNotFoundError(f"Нет {ML_EQUITY_CSV}")
     return pd.read_csv(ML_EQUITY_CSV, parse_dates=["date"]).sort_values("date").reset_index(drop=True)
+
+def load_imoex(split_date: str) -> pd.Series:
+    """Wide Series: index=date, values=close. Только IS."""
+    conn = sqlite3.connect(INDEXES_DB)
+    df = pd.read_sql(
+        "SELECT date, close FROM indexes WHERE ticker='IMOEX' AND date < ?",
+        conn, params=(split_date,),
+    )
+    conn.close()
+    df["date"] = pd.to_datetime(df["date"])
+    return df.set_index("date")["close"].sort_index()

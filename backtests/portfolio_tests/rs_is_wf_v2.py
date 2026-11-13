@@ -376,6 +376,87 @@ def main():
 
     print(f"\n[wf-v2] готово.")
 
+def run_rs_wf(split_date: str,
+              rebalance_step: int = 20,
+              verbose: bool = False) -> dict:
+    """
+    Прогон WF RS-модели с заданным шагом ребаланса.
+    Использует ту же логику, что main(): CatBoost на rank-gauss,
+    buy-and-hold, дневные доходности.
+    
+    Возвращает:
+      daily_ret: pd.Series (дневные доходности buy-and-hold)
+      metrics: dict (CAGR, MDD, VOL, Sharpe, Sortino, Calmar)
+      port_rs: pd.DataFrame (20d RS на датах ребаланса)
+    """
+    features_raw, features_rank, target_rs, target_gauss, _ = build_dataset(split_date)
+    dates = target_rs.dropna(how="all").index
+    folds = make_folds(dates, n_folds=6, purge=PURGE)
+
+    close = load_stock_close(split_date)
+    daily_ret_all = close.pct_change()
+
+    daily_bh_records = []
+    port_rs_records = []
+
+    for i, (tr_dates, va_dates) in enumerate(folds):
+        if verbose:
+            print(f"  fold {i+1}: train {tr_dates[0].date()} → {tr_dates[-1].date()} | "
+                  f"val {va_dates[0].date()} → {va_dates[-1].date()}")
+
+        tr_long = to_long(features_rank, target_gauss)
+        tr_long = tr_long[tr_long["date"].isin(tr_dates)].reset_index(drop=True)
+        X_tr = tr_long[FEATURES].values
+        y_tr = tr_long["target"].values
+
+        model = CatBoostRegressor(**MODEL_PARAMS)
+        model.fit(X_tr, y_tr, verbose=False)
+
+        va_long = to_long(features_rank, target_gauss)
+        va_long = va_long[va_long["date"].isin(va_dates)].reset_index(drop=True)
+        X_va = va_long[FEATURES].values
+        va_long["pred"] = model.predict(X_va)
+        pred_wide = va_long.pivot(index="date", columns="ticker", values="pred")
+
+        rebal_dates = va_dates[::rebalance_step]
+        for j, rd in enumerate(rebal_dates):
+            if rd not in pred_wide.index:
+                continue
+            pred_row = pred_wide.loc[rd].dropna()
+            if len(pred_row) < TOP_N:
+                continue
+            selected = pred_row.nlargest(TOP_N).index.tolist()
+
+            # 20d RS для сравнения (на исходном target_rs)
+            if rd in target_rs.index:
+                rs_row = target_rs.loc[rd, selected].dropna()
+                if len(rs_row) >= TOP_N:
+                    port_rs_records.append({
+                        "date": rd, "fold": i + 1,
+                        "port_rs": float(rs_row.mean()),
+                    })
+
+            if j + 1 < len(rebal_dates):
+                next_rd = rebal_dates[j + 1]
+            else:
+                next_rd = va_dates[-1]
+
+            bh = simulate_buy_and_hold(daily_ret_all, selected, rd, next_rd)
+            for d, r in bh.items():
+                daily_bh_records.append({"date": d, "ret": r})
+
+    daily_df = (pd.DataFrame(daily_bh_records)
+                .drop_duplicates("date")
+                .set_index("date")["ret"]
+                .sort_index())
+    metrics = compute_metrics_daily(daily_df)
+    port_rs_df = pd.DataFrame(port_rs_records)
+
+    return {
+        "daily_ret": daily_df,
+        "metrics": metrics,
+        "port_rs": port_rs_df,
+    }
 
 if __name__ == "__main__":
     main()

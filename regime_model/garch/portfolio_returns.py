@@ -102,3 +102,40 @@ def build_port_rs_at_rebalance(daily_returns: pd.Series,
         # cumulative 20d return
         out[rd] = (1 + period).prod() - 1
     return pd.Series(out).sort_index()
+
+def simulate_buy_and_hold(daily_ret: pd.DataFrame,
+                          holdings: list,
+                          start_date: pd.Timestamp,
+                          end_date: pd.Timestamp) -> pd.Series:
+    """
+    Симулирует buy-and-hold портфель от start_date (исключая) до end_date (включая).
+    Веса дрейфуют между ребалансами.
+    """
+    period_idx = daily_ret.index[(daily_ret.index > start_date) & (daily_ret.index <= end_date)]
+    if len(period_idx) == 0:
+        return pd.Series(dtype=float)
+
+    valid = [t for t in holdings if t in daily_ret.columns]
+    if len(valid) == 0:
+        return pd.Series(dtype=float)
+
+    n_total = len(holdings)
+    w0 = np.zeros(len(valid))
+    for i, t in enumerate(valid):
+        w0[i] = 1.0 / n_total
+    if w0.sum() > 0:
+        w0 = w0 / w0.sum()
+
+    port_returns = []
+    weights = w0.copy()
+    for d in period_idx:
+        rets = daily_ret.loc[d, valid].values
+        rets = np.where(np.isfinite(rets), rets, 0.0)
+        port_ret = float(np.sum(weights * rets))
+        port_returns.append(port_ret)
+        new_weights = weights * (1 + rets)
+        s = new_weights.sum()
+        if s > 0:
+            weights = new_weights / s
+
+    return pd.Series(port_returns, index=period_idx, name="port_ret_bh")

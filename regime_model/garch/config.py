@@ -34,3 +34,5 @@ VOL_FLOOR = 0.01           # защита от деления на ~0
 
 # --- Smoke ---
 SMOKE_TRAIN_FRAC = 0.6     # 60% train, 40% "val" (без WF)
+
+INDEXES_DB = ROOT / "indexes" / "sql" / "indexes.sqlite"
